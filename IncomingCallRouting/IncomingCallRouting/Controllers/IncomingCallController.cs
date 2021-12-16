@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Azure.Communication.CallingServer;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
+using Azure.Messaging;
 
 namespace IncomingCallRouting.Controllers
 {
@@ -82,10 +83,12 @@ namespace IncomingCallRouting.Controllers
             {
                 if(EventAuthHandler.Authorize(secret))
                 {
-                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"CallingServerAPICallBacks-------> {request.ToString()}");
+                    var requestInString = request.ToString();
 
-                    var httpContent = new BinaryData(request.ToString()).ToStream();
-                    EventGridEvent cloudEvent = EventGridEvent.ParseMany(BinaryData.FromStream(httpContent)).FirstOrDefault();
+                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"CallingServerAPICallBacks-------> {requestInString}");
+
+                    var httpContent = new BinaryData(requestInString).ToStream();
+                    var cloudEvent = CloudEvent.ParseMany(BinaryData.FromStream(httpContent)).FirstOrDefault();
 
                     if (cloudEvent != null)
                     {

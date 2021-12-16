@@ -27,7 +27,6 @@ namespace IncomingCallRouting
         private TaskCompletionSource<bool> transferToParticipantCompleteTask;
         private string targetParticipant;
         private readonly int maxRetryAttemptCount = 3;
-        private readonly Timer timer;
 
         public IncomingCallHandler(CallingServerClient callingServerClient, CallConfiguration callConfiguration)
         {
@@ -65,32 +64,32 @@ namespace IncomingCallRouting
 
                 //For now, use sleep wait for the call to get established
                 Thread.Sleep(60 * 1000);
-                
-                PlayAudioAsync();      
-                // var playAudioCompleted = await playAudioCompletedTask.Task.ConfigureAwait(false);
 
-                // if (!playAudioCompleted)
-                // {
-                //     await HangupAsync().ConfigureAwait(false);
-                // }
-                // else
-                // {
-                //     var toneReceivedComplete = await toneReceivedCompleteTask.Task.ConfigureAwait(false);
-                //     if (toneReceivedComplete)
-                //     {
-                //         string participant = targetParticipant;
-                //         Logger.LogMessage(Logger.MessageType.INFORMATION, $"Tranferring call to participant {participant}");
-                //         var transferToParticipantCompleted = await TransferToParticipant(participant);
-                //         if (!transferToParticipantCompleted)
-                //         {
-                //             await RetryTransferToParticipantAsync(async () => await TransferToParticipant(participant));
-                //         }
-                //     }
-                //     await HangupAsync().ConfigureAwait(false);
-                // }
+                await PlayAudioAsync().ConfigureAwait(false);
+                var playAudioCompleted = await playAudioCompletedTask.Task.ConfigureAwait(false);
 
-                // // Wait for the call to terminate
-                // await callTerminatedTask.Task.ConfigureAwait(false);
+                if (!playAudioCompleted)
+                {
+                    await HangupAsync().ConfigureAwait(false);
+                }
+                else
+                {
+                    var toneReceivedComplete = await toneReceivedCompleteTask.Task.ConfigureAwait(false);
+                    if (toneReceivedComplete)
+                    {
+                        string participant = targetParticipant;
+                        Logger.LogMessage(Logger.MessageType.INFORMATION, $"Tranferring call to participant {participant}");
+                        var transferToParticipantCompleted = await TransferToParticipant(participant);
+                        if (!transferToParticipantCompleted)
+                        {
+                            await RetryTransferToParticipantAsync(async () => await TransferToParticipant(participant));
+                        }
+                    }
+                    await HangupAsync().ConfigureAwait(false);
+                }
+
+                // Wait for the call to terminate
+                await callTerminatedTask.Task.ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -131,33 +130,25 @@ namespace IncomingCallRouting
 
                 var response = await callConnection.PlayAudioAsync(new Uri(callConfiguration.AudioFileUrl),
                     playAudioOptions).ConfigureAwait(false);
-                
 
                 Logger.LogMessage(Logger.MessageType.INFORMATION, $"PlayAudioAsync response --> {response.GetRawResponse()}, Id: {response.Value.OperationId}, Status: {response.Value.Status}, OperationContext: {response.Value.OperationContext}, ResultInfo: {response.Value.ResultDetails}");
 
-
-                if(response.Value.Status != CallingOperationStatus.Running)
+                if (response.Value.Status == CallingOperationStatus.Running)
                 {
-                    throw new Exception();
+                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"Play Audio state: {response.Value.Status}");
+                    // listen to play audio events
+                    RegisterToPlayAudioResultEvent(playAudioOptions.OperationContext);
+
+                    var completedTask = await Task.WhenAny(playAudioCompletedTask.Task, Task.Delay(60 * 1000)).ConfigureAwait(false);
+
+                    if (completedTask != playAudioCompletedTask.Task)
+                    {
+                        Logger.LogMessage(Logger.MessageType.INFORMATION, "Cancel All Media Operations");
+                        playAudioCompletedTask.TrySetResult(true);
+                        toneReceivedCompleteTask.TrySetResult(true);
+                        await CancelAllMediaOperations().ConfigureAwait(false);
+                    }
                 }
-
-                // initialize timer
-                timer = new System.Timers.Timer(30000);
-                timer.Start();
-
-                Logger.LogMessage(Logger.MessageType.INFORMATION, $"Play Audio state: {response.Value.Status}");
-                // listen to play audio events
-                RegisterToPlayAudioResultEvent(playAudioOptions.OperationContext);
-
-                // var completedTask = await Task.WhenAny(playAudioCompletedTask.Task, Task.Delay(10 * 1000)).ConfigureAwait(false);
-
-                // if (completedTask != playAudioCompletedTask.Task)
-                // {
-                //     Logger.LogMessage(Logger.MessageType.INFORMATION, "Cancel All Media Operations");
-                //     playAudioCompletedTask.TrySetResult(true);
-                //     toneReceivedCompleteTask.TrySetResult(true);
-                //     await CancelAllMediaOperations().ConfigureAwait(false);
-                // }
             }
             catch (TaskCanceledException)
             {
@@ -166,8 +157,6 @@ namespace IncomingCallRouting
             catch (Exception ex)
             {
                 Logger.LogMessage(Logger.MessageType.ERROR, $"Failure occured while playing audio on the call. Exception: {ex.Message}");
-
-                await HangupAsync().ConfigureAwait(false);
             }
         }
 
@@ -240,35 +229,20 @@ namespace IncomingCallRouting
 
             var playPromptResponseNotification = new NotificationCallback((CallingServerEventBase callEvent) =>
             {
-                Task.Run(async () =>
+                Task.Run(() =>
                 {
-                    try
+                    var playAudioResultEvent = (PlayAudioResultEvent)callEvent;
+                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"Play audio status: {playAudioResultEvent.Status}");
+
+                    if (playAudioResultEvent.Status == CallingOperationStatus.Completed)
                     {
-                        var playAudioResultEvent = (PlayAudioResultEvent)callEvent;
-                        Logger.LogMessage(Logger.MessageType.INFORMATION, $"Play audio status: {playAudioResultEvent.Status}");
-
-                        if (playAudioResultEvent.Status == CallingOperationStatus.Running
-                        && timer.Elapsed > 30000)
-                        {
-                            playAudioCompletedTask.TrySetResult(true);
-                            await CancelAllMediaOperations().ConfigureAwait(false);
-                        }
-
-                        if (playAudioResultEvent.Status == CallingOperationStatus.Completed)
-                        {
-                            playAudioCompletedTask.TrySetResult(true);
-                            toneReceivedCompleteTask.TrySetResult(true);
-                            EventDispatcher.Instance.Unsubscribe(CallingServerEventType.PlayAudioResultEvent.ToString(), operationContext);
-                        }
-                        else if (playAudioResultEvent.Status == CallingOperationStatus.Failed)
-                        {
-                            playAudioCompletedTask.TrySetResult(false);
-                        }
+                        playAudioCompletedTask.TrySetResult(true);
+                        toneReceivedCompleteTask.TrySetResult(true);
+                        EventDispatcher.Instance.Unsubscribe(CallingServerEventType.PlayAudioResultEvent.ToString(), operationContext);
                     }
-                    catch (Exception e)
+                    else if (playAudioResultEvent.Status == CallingOperationStatus.Failed)
                     {
-                        Logger.LogMessage(Logger.MessageType.INFORMATION, $"error placeholder {e}");
-                        await HangupAsync();
+                        playAudioCompletedTask.TrySetResult(false);
                     }
                 });
             });

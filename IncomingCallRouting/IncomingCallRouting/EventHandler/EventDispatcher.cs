@@ -4,6 +4,7 @@
 namespace IncomingCallRouting
 {
     using Azure.Communication.CallingServer;
+    using Azure.Messaging;
     using Azure.Messaging.EventGrid;
     using System;
     using System.Collections.Concurrent;
@@ -45,7 +46,7 @@ namespace IncomingCallRouting
             }
         }
 
-        public void ProcessNotification(EventGridEvent cloudEvent)
+        public void ProcessNotification(CloudEvent cloudEvent)
         {
             var callEvent = this.ExtractEvent(cloudEvent);
 
@@ -103,24 +104,24 @@ namespace IncomingCallRouting
         /// </summary>
         /// <param name="content"></param>
         /// <returns></returns>
-        public CallingServerEventBase ExtractEvent(EventGridEvent cloudEvent)
+        public CallingServerEventBase ExtractEvent(CloudEvent cloudEvent)
         {
 
             if (cloudEvent != null && cloudEvent.Data != null)
             {
-                if (cloudEvent.EventType.Equals(CallingServerEventType.CallConnectionStateChangedEvent.ToString()))
+                if (cloudEvent.Type.Equals(CallingServerEventType.CallConnectionStateChangedEvent.ToString()))
                 {
                     return CallConnectionStateChangedEvent.Deserialize(cloudEvent.Data.ToString());
                 }
-                else if (cloudEvent.EventType.Equals(CallingServerEventType.ToneReceivedEvent.ToString()))
+                else if (cloudEvent.Type.Equals(CallingServerEventType.ToneReceivedEvent.ToString()))
                 {
                     return ToneReceivedEvent.Deserialize(cloudEvent.Data.ToString());
                 }
-                else if (cloudEvent.EventType.Equals(CallingServerEventType.PlayAudioResultEvent.ToString()))
+                else if (cloudEvent.Type.Equals(CallingServerEventType.PlayAudioResultEvent.ToString()))
                 {
                     return PlayAudioResultEvent.Deserialize(cloudEvent.Data.ToString());
                 }
-                else if (cloudEvent.EventType.Equals(CallingServerEventType.AddParticipantResultEvent.ToString()))
+                else if (cloudEvent.Type.Equals(CallingServerEventType.AddParticipantResultEvent.ToString()))
                 {
                     return AddParticipantResultEvent.Deserialize(cloudEvent.Data.ToString());
                 }
