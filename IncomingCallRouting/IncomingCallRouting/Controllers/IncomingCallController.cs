@@ -83,11 +83,9 @@ namespace IncomingCallRouting.Controllers
             {
                 if(EventAuthHandler.Authorize(secret))
                 {
-                    var requestInString = request.ToString();
+                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"CallingServerAPICallBacks-------> {request.ToString()}");
 
-                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"CallingServerAPICallBacks-------> {requestInString}");
-
-                    var httpContent = new BinaryData(requestInString).ToStream();
+                    var httpContent = new BinaryData(request.ToString()).ToStream();
                     var cloudEvent = CloudEvent.ParseMany(BinaryData.FromStream(httpContent)).FirstOrDefault();
 
                     if (cloudEvent != null)

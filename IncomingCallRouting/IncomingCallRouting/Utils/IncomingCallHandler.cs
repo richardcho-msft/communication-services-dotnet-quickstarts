@@ -139,7 +139,7 @@ namespace IncomingCallRouting
                     // listen to play audio events
                     RegisterToPlayAudioResultEvent(playAudioOptions.OperationContext);
 
-                    var completedTask = await Task.WhenAny(playAudioCompletedTask.Task, Task.Delay(60 * 1000)).ConfigureAwait(false);
+                    var completedTask = await Task.WhenAny(playAudioCompletedTask.Task, Task.Delay(10 * 1000)).ConfigureAwait(false);
 
                     if (completedTask != playAudioCompletedTask.Task)
                     {
