@@ -6,6 +6,9 @@ namespace IncomingCallRouting
     using Azure.Communication;
     using Azure.Communication.CallingServer;
     using Azure.Communication.CallingServer.Models;
+    using IncomingCallRouting.Models;
+    using IncomingCallRouting.Services;
+    using LiveWire.IncomingCall;
     using System;
     using System.Collections.Generic;
     using System.Text.RegularExpressions;
@@ -28,11 +31,16 @@ namespace IncomingCallRouting
         private TaskCompletionSource<bool> transferToParticipantCompleteTask;
         private readonly int maxRetryAttemptCount = 3;
 
-        public IncomingCallHandler(CallingServerClient callingServerClient, CallConfiguration callConfiguration)
+        private readonly IIncomingCallEventService _incomingCallEventService;
+
+        public IncomingCallHandler(CallingServerClient callingServerClient,
+                                   CallConfiguration callConfiguration,
+                                   IIncomingCallEventService incomingCallEventService)
         {
             this.callConfiguration = callConfiguration;
             this.callingServerClient = callingServerClient;
             targetParticipant = callConfiguration.targetParticipant;
+            _incomingCallEventService = incomingCallEventService;
         }
 
         public async Task Report(string incomingCallContext)
@@ -194,20 +202,37 @@ namespace IncomingCallRouting
             //Set the callback method
             var callStateChangeNotificaiton = new NotificationCallback((CallingServerEventBase callEvent) =>
             {
-                var callStateChanged = (CallConnectionStateChangedEvent)callEvent;
-
-                Logger.LogMessage(Logger.MessageType.INFORMATION, $"Call State changed to: {callStateChanged.CallConnectionState}");
-
-                if (callStateChanged.CallConnectionState == CallConnectionState.Connected)
+                Task.Run(async () =>
                 {
-                    callEstablishedTask.TrySetResult(true);
-                }
-                else if (callStateChanged.CallConnectionState == CallConnectionState.Disconnected)
-                {
-                    EventDispatcher.Instance.Unsubscribe(CallingServerEventType.CallConnectionStateChangedEvent.ToString(), callConnectionId);
-                    reportCancellationTokenSource.Cancel();
-                    callTerminatedTask.SetResult(true);
-                }
+                    var callStateChanged = (CallConnectionStateChangedEvent)callEvent;
+
+                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"Call State changed to: {callStateChanged.CallConnectionState}");
+
+                    if (!Enum.TryParse<LiveWire.IncomingCall.CallConnectionState>(callStateChanged.CallConnectionState.ToString(), true, out var callConnectionState))
+                    {
+                        callConnectionState = LiveWire.IncomingCall.CallConnectionState.Default;
+                    }
+
+                    var callEventDto = new CallingEventDto
+                    {
+                        CallConnectionState = callConnectionState,
+                        EventType = EventType.CallConnection,
+                        Id = callConnectionId,
+                    };
+
+                    await _incomingCallEventService.Invoke("CallingEvents", callEventDto);
+
+                    if (callStateChanged.CallConnectionState == Azure.Communication.CallingServer.Models.CallConnectionState.Connected)
+                    {
+                        callEstablishedTask.TrySetResult(true);
+                    }
+                    else if (callStateChanged.CallConnectionState == Azure.Communication.CallingServer.Models.CallConnectionState.Disconnected)
+                    {
+                        EventDispatcher.Instance.Unsubscribe(CallingServerEventType.CallConnectionStateChangedEvent.ToString(), callConnectionId);
+                        reportCancellationTokenSource.Cancel();
+                        callTerminatedTask.SetResult(true);
+                    }
+                });
             });
 
             //Subscribe to the event
@@ -260,6 +285,14 @@ namespace IncomingCallRouting
                     {
                         toneReceivedCompleteTask.TrySetResult(false);
                     }
+
+                    Enum.TryParse<DtmfTone>(toneReceivedEvent.ToneInfo.Tone.ToString(), true, out var dtmfTone);
+
+                    await _incomingCallEventService.Invoke("CallingEvents", new CallingEventDto
+                    {
+                        Id = toneReceivedEvent.CallConnectionId,
+                        DtmfToneValue = dtmfTone
+                    });
 
                     EventDispatcher.Instance.Unsubscribe(CallingServerEventType.ToneReceivedEvent.ToString(), callConnectionId);
                     // cancel playing audio

@@ -8,6 +8,8 @@ using Microsoft.Extensions.Configuration;
 using Azure.Communication.CallingServer;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
+using IncomingCallRouting.Services;
+using IncomingCallRouting.Models;
 
 namespace IncomingCallRouting.Controllers
 {
@@ -15,14 +17,21 @@ namespace IncomingCallRouting.Controllers
     public class IncomingCallController : Controller
     {
         private readonly CallingServerClient callingServerClient;
+
+        private readonly IIncomingCallEventService _incomingCallEventService;
+
+
         List<Task> incomingCalls;
         CallConfiguration callConfiguration;
-        public IncomingCallController(IConfiguration configuration, ILogger<IncomingCallController> logger)
+        public IncomingCallController(IConfiguration configuration,
+                                      IIncomingCallEventService incomingCallEventService,
+                                      ILogger<IncomingCallController> logger)
         {
             Logger.SetLoggerInstance(logger);
             callingServerClient = new CallingServerClient(configuration["ResourceConnectionString"]);
             incomingCalls = new List<Task>();
             callConfiguration = CallConfiguration.getCallConfiguration(configuration);
+            _incomingCallEventService = incomingCallEventService;
         }
 
         /// Web hook to receive the incoming call Event
@@ -57,7 +66,13 @@ namespace IncomingCallRouting.Controllers
                     if (eventData != null)
                     {
                         string incomingCallContext = eventData.Split("\"incomingCallContext\":\"")[1].Split("\"}")[0];
-                        incomingCalls.Add(Task.Run(async () => await new IncomingCallHandler(callingServerClient, callConfiguration).Report(incomingCallContext)));
+
+                        _incomingCallEventService.Invoke("IncomingCall", new CallingEventDto
+                        {
+                            Id = incomingCallContext,
+                        });
+                        
+                        incomingCalls.Add(Task.Run(async () => await new IncomingCallHandler(callingServerClient, callConfiguration, _incomingCallEventService).Report(incomingCallContext)));
                     }
                 }
                 return Ok();
