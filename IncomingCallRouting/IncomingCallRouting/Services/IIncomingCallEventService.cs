@@ -11,7 +11,7 @@ namespace IncomingCallRouting.Services
     public interface IIncomingCallEventService
     {
 
-        void Register(string eventId, Func<CallingEventDto, Task> callingEventDispatcher);
+        void Register(string connectionId, Func<CallingEventDto, Task> callingEventDispatcher);
 
 
         Task Invoke(string eventId, CallingEventDto callingEvent);
