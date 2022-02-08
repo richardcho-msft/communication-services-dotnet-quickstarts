@@ -1,9 +1,17 @@
-﻿using System.Collections.Concurrent;
+﻿using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 
 namespace IncomingCallRouting.Services
 {
     public interface IConnectionManager
     {
-        // ConcurrentDictionary<string, ConcurrentDictionary<>>
+        List<string> Connections { get; }
+
+        void Register(string connectionId);
+
+        void Deregister(string connectionId);
+
+        string Next();
     }
 }
