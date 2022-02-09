@@ -10,10 +10,10 @@ namespace IncomingCallRouting.Services
 {
     public interface IIncomingCallEventService
     {
+        void Register(string clientId, Func<CallingEventDto, Task> callingEventDispatcher);
 
-        void Register(string connectionId, Func<CallingEventDto, Task> callingEventDispatcher);
+        void Deregister(string clientId);
 
-
-        Task Invoke(string eventId, CallingEventDto callingEvent);
+        Task Invoke(string callId, CallingEventDto callingEvent);
     }
 }

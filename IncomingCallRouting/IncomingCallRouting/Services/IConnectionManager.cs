@@ -6,8 +6,6 @@ namespace IncomingCallRouting.Services
 {
     public interface IConnectionManager
     {
-        List<string> Connections { get; }
-
         void Register(string connectionId);
 
         void Deregister(string connectionId);
