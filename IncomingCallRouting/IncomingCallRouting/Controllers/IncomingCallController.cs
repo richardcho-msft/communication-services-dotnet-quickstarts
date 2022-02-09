@@ -39,7 +39,7 @@ namespace IncomingCallRouting.Controllers
         /// <returns></returns>
         [HttpPost]
         [Route("OnIncomingCall")]
-        public IActionResult OnIncomingCall([FromBody] object request)
+        public async Task<IActionResult> OnIncomingCall([FromBody] object request)
         {
             try
             {
@@ -67,14 +67,22 @@ namespace IncomingCallRouting.Controllers
                     {
                         string incomingCallContext = eventData.Split("\"incomingCallContext\":\"")[1].Split("\"}")[0];
 
+                        var response = await callingServerClient.AnswerCallAsync(
+                            incomingCallContext,
+                            new List<CallMediaType> { CallMediaType.Audio },
+                            new List<CallingEventSubscriptionType> { CallingEventSubscriptionType.ParticipantsUpdated },
+                            new Uri(callConfiguration.AppCallbackUrl));
+                        var callConnection = response.Value;
+
                         _incomingCallEventService.Invoke("IncomingCall", new CallingEventDto
                         {
-                            Id = incomingCallContext,
+                            Id = callConnection.CallConnectionId,
                         });
                         
-                        incomingCalls.Add(Task.Run(async () => await new IncomingCallHandler(callingServerClient, callConfiguration, _incomingCallEventService).Report(incomingCallContext)));
+                        incomingCalls.Add(Task.Run(async () => await new IncomingCallHandler(callingServerClient, callConfiguration, _incomingCallEventService).Report(callConnection)));
                     }
                 }
+
                 return Ok();
             }
             catch (Exception ex)

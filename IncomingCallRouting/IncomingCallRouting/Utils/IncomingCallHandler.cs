@@ -43,23 +43,13 @@ namespace IncomingCallRouting
             _incomingCallEventService = incomingCallEventService;
         }
 
-        public async Task Report(string incomingCallContext)
+        public async Task Report(CallConnection callConnection)
         {
             reportCancellationTokenSource = new CancellationTokenSource();
             reportCancellationToken = reportCancellationTokenSource.Token;
 
             try
             {
-                // Answer Call
-                var response = await callingServerClient.AnswerCallAsync(
-                    incomingCallContext,
-                    new List<CallMediaType> { CallMediaType.Audio },
-                    new List<CallingEventSubscriptionType> { CallingEventSubscriptionType.ParticipantsUpdated },
-                    new Uri(callConfiguration.AppCallbackUrl));
-
-                Logger.LogMessage(Logger.MessageType.INFORMATION, $"AnswerCallAsync Response -----> {response.GetRawResponse()}");
-
-                callConnection = response.Value;
                 RegisterToCallStateChangeEvent(callConnection.CallConnectionId);
 
                 //Wait for the call to get connected
