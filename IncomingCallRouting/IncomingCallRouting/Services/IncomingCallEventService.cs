@@ -2,7 +2,9 @@
 // Licensed under the MIT License.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using IncomingCallRouting.Models;
 using LiveWire.IncomingCall;
@@ -18,41 +20,28 @@ namespace IncomingCallRouting.Services
             _connectionManager = connectionManager;
         }
 
-        private readonly IDictionary<string, Func<CallingEventDto, Task>> _connectionIdToCallback = new Dictionary<string, Func<CallingEventDto, Task>>();
-        private readonly IDictionary<string, string> _callIdToConnectionId = new Dictionary<string, string>();
-
-
-        public async Task Invoke(string connectionId, CallingEventDto callingEvent)
-        {
-            string? connectionId = null;
-
-            if (callingEvent.EventType is EventType.IncomingCall)
-            {
-                connectionId = _connectionManager.Next();
-                // _callIdToConnectionId.Add(eventId, )
-            }
-            else
-            {
-                // send to same connection?
-            }
-
-            if (_callIdToConnectionId.TryGetValue(connectionId, out var callingEventDispatcher))
-            {
-                await callingEventDispatcher(callingEvent);
-            }
-        }
+        private readonly ConcurrentDictionary<string, Func<CallingEventDto, Task>> _clientIdToCallback = new ();
+        private readonly ConcurrentDictionary<string, string> _callIdToClientId = new ();
 
         public void Register(string clientId, Func<CallingEventDto, Task> callingEventDispatcher)
         {
             _connectionManager.Register(clientId);
+            _clientIdToCallback.AddOrUpdate(clientId, callingEventDispatcher, (_, _) => callingEventDispatcher);
+        }
 
-            if (!_connectionIdToCallback.ContainsKey(clientId))
+        public void Deregister(string clientId)
+        {
+            _connectionManager.Deregister(clientId);
+            _clientIdToCallback.TryRemove(clientId, out _);
+            _callIdToClientId.Where(kv => kv.Value == clientId).ToList().ForEach(kv => _callIdToClientId.TryRemove(kv.Key, out _));
+        }
+
+        public async Task Invoke(string callId, CallingEventDto callingEvent)
+        {
+            var clientId = _callIdToClientId.GetOrAdd(callId, _connectionManager.Next());
+            if (_clientIdToCallback.TryGetValue(clientId, out var callingEventDispatcher))
             {
-                _connectionIdToCallback.TryAdd(clientId, callingEventDispatcher);
-            }
-            else
-            {
-                _connectionIdToCallback[clientId] = callingEventDispatcher;
+                await callingEventDispatcher(callingEvent);
             }
         }
     }
