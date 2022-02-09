@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -28,8 +29,10 @@ namespace IncomingCallRouting.Controllers
             await foreach (var request in requestStream.ReadAllAsync())
             {
                 clientIds.Add(request.ClientId);
+                Console.WriteLine($"Client {request.ClientId} connected.");
                 _incomingCallEventService.Register(request.ClientId, async callingEvent =>
                 {
+                    Console.WriteLine($"Sending {callingEvent.EventType} for call {callingEvent.Id} to client {request.ClientId}.");
                     await responseStream.WriteAsync(new CallingEventResponse
                     {
                         CallId = callingEvent.Id,
