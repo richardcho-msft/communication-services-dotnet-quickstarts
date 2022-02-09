@@ -1,4 +1,5 @@
 using IncomingCallRouting.Controllers;
+using IncomingCallRouting.Models;
 using IncomingCallRouting.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -21,7 +22,6 @@ namespace IncomingCallRouting
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-
             services.AddControllers();
             services.AddSwaggerGen(c =>
             {
@@ -29,6 +29,10 @@ namespace IncomingCallRouting
             });
             services.AddGrpc();
             services.AddSingleton<IIncomingCallEventService, IncomingCallEventService>();
+            var connectionManagerOptions = new ConnectionManagerOptions();
+            Configuration.Bind("ConnectionManager", connectionManagerOptions);
+            services.AddSingleton(connectionManagerOptions);
+            services.AddSingleton<IConnectionManager, ConnectionManager>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

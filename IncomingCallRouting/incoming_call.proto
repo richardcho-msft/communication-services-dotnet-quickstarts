@@ -2,16 +2,8 @@ syntax = "proto3";
 
 option csharp_namespace = "LiveWire.IncomingCall";
 
-message RegistrationRequest {
+message CallingEventRequest {
     string client_id = 1;
-}
-
-message RegistrationResponse {
-    string call_id = 1;
-}
-
-message CallingEventRequst {
-    string call_id = 1;
 }
 
 message CallingEventResponse {
@@ -22,9 +14,10 @@ message CallingEventResponse {
 }
 
 enum EventType {
-    Call_CONNECTION = 0;
-    DTMF_TONE = 1;
-    PLAY_MEDIA = 2;
+    INCOMING_CALL = 0;
+    CALL_CONNECTION = 1;
+    DTMF_TONE = 2;
+    PLAY_MEDIA = 3;
 }
 
 enum CallConnectionState {
@@ -51,7 +44,5 @@ enum DtmfTone {
 }
 
 service IncomingCall {
-    rpc Register(RegistrationRequest) returns (stream RegistrationResponse);
-
-    rpc SubscribeToEvents(CallingEventRequst) returns (stream CallingEventResponse);
+    rpc Register(stream CallingEventRequest) returns (stream CallingEventResponse);
 }
