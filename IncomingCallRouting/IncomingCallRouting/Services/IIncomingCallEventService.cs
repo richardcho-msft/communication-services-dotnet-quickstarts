@@ -14,6 +14,6 @@ namespace IncomingCallRouting.Services
 
         void Deregister(string clientId);
 
-        Task Invoke(string callId, CallingEventDto callingEvent);
+        Task SendEvent(CallingEventDto callingEvent);
     }
 }

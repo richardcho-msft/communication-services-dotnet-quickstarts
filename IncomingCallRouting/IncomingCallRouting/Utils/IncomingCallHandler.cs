@@ -210,7 +210,7 @@ namespace IncomingCallRouting
                         Id = callConnectionId,
                     };
 
-                    await _incomingCallEventService.Invoke("CallingEvents", callEventDto);
+                    await _incomingCallEventService.SendEvent(callEventDto);
 
                     if (callStateChanged.CallConnectionState == Azure.Communication.CallingServer.Models.CallConnectionState.Connected)
                     {
@@ -278,7 +278,7 @@ namespace IncomingCallRouting
 
                     Enum.TryParse<DtmfTone>(toneReceivedEvent.ToneInfo.Tone.ToString(), true, out var dtmfTone);
 
-                    await _incomingCallEventService.Invoke("CallingEvents", new CallingEventDto
+                    await _incomingCallEventService.SendEvent(new CallingEventDto
                     {
                         Id = toneReceivedEvent.CallConnectionId,
                         DtmfToneValue = dtmfTone
