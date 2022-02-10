@@ -73,8 +73,9 @@ namespace IncomingCallRouting.Controllers
                             new List<CallingEventSubscriptionType> { CallingEventSubscriptionType.ParticipantsUpdated },
                             new Uri(callConfiguration.AppCallbackUrl));
                         var callConnection = response.Value;
-
-                        _incomingCallEventService.Invoke("IncomingCall", new CallingEventDto
+                        
+                        _incomingCallEventService.RegisterCallConnection(callConnection);
+                        _incomingCallEventService.Invoke(new CallingEventDto
                         {
                             Id = callConnection.CallConnectionId,
                         });
