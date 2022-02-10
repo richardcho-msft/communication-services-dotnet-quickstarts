@@ -36,9 +36,9 @@ namespace IncomingCallRouting.Services
             _callIdToClientId.Where(kv => kv.Value == clientId).ToList().ForEach(kv => _callIdToClientId.TryRemove(kv.Key, out _));
         }
 
-        public async Task Invoke(string callId, CallingEventDto callingEvent)
+        public async Task SendEvent(CallingEventDto callingEvent)
         {
-            var clientId = _callIdToClientId.GetOrAdd(callId, _connectionManager.Next());
+            var clientId = _callIdToClientId.GetOrAdd(callingEvent.Id, _connectionManager.Next());
             if (_clientIdToCallback.TryGetValue(clientId, out var callingEventDispatcher))
             {
                 await callingEventDispatcher(callingEvent);
