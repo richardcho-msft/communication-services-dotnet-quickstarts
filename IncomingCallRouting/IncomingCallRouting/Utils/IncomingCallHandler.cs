@@ -11,6 +11,7 @@ namespace IncomingCallRouting
     using LiveWire.IncomingCall;
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using System.Text.RegularExpressions;
     using System.Threading;
     using System.Threading.Tasks;
@@ -51,34 +52,36 @@ namespace IncomingCallRouting
             try
             {
                 RegisterToCallStateChangeEvent(callConnection.CallConnectionId);
+                RegisterToTransferParticipantsResultEvent("");
+                RegisterToPlayAudioResultEvent("");
 
                 //Wait for the call to get connected
                 await callEstablishedTask.Task.ConfigureAwait(false);
 
                 RegisterToDtmfResultEvent(callConnection.CallConnectionId);
 
-                await PlayAudioAsync().ConfigureAwait(false);
-                var playAudioCompleted = await playAudioCompletedTask.Task.ConfigureAwait(false);
+                // await PlayAudioAsync().ConfigureAwait(false);
+                // var playAudioCompleted = await playAudioCompletedTask.Task.ConfigureAwait(false);
 
-                if (!playAudioCompleted)
-                {
-                    await HangupAsync().ConfigureAwait(false);
-                }
-                else
-                {
-                    var toneReceivedComplete = await toneReceivedCompleteTask.Task.ConfigureAwait(false);
-                    if (toneReceivedComplete)
-                    {
-                        string participant = targetParticipant;
-                        Logger.LogMessage(Logger.MessageType.INFORMATION, $"Tranferring call to participant {participant}");
-                        var transferToParticipantCompleted = await TransferToParticipant(participant);
-                        if (!transferToParticipantCompleted)
-                        {
-                            await RetryTransferToParticipantAsync(async () => await TransferToParticipant(participant));
-                        }
-                    }
-                    await HangupAsync().ConfigureAwait(false);
-                }
+                // if (!playAudioCompleted)
+                // {
+                //     await HangupAsync().ConfigureAwait(false);
+                // }
+                // else
+                // {
+                //     var toneReceivedComplete = await toneReceivedCompleteTask.Task.ConfigureAwait(false);
+                //     if (toneReceivedComplete)
+                //     {
+                //         string participant = targetParticipant;
+                //         Logger.LogMessage(Logger.MessageType.INFORMATION, $"Tranferring call to participant {participant}");
+                //         var transferToParticipantCompleted = await TransferToParticipant(participant);
+                //         if (!transferToParticipantCompleted)
+                //         {
+                //             await RetryTransferToParticipantAsync(async () => await TransferToParticipant(participant));
+                //         }
+                //     }
+                //     await HangupAsync().ConfigureAwait(false);
+                // }
 
                 // Wait for the call to terminate
                 await callTerminatedTask.Task.ConfigureAwait(false);
@@ -200,7 +203,7 @@ namespace IncomingCallRouting
 
                     if (!Enum.TryParse<LiveWire.IncomingCall.CallConnectionState>(callStateChanged.CallConnectionState.ToString(), true, out var callConnectionState))
                     {
-                        callConnectionState = LiveWire.IncomingCall.CallConnectionState.Default;
+                        callConnectionState = LiveWire.IncomingCall.CallConnectionState.NotConnected;
                     }
 
                     var callEventDto = new CallingEventDto
@@ -236,10 +239,23 @@ namespace IncomingCallRouting
 
             var playPromptResponseNotification = new NotificationCallback((CallingServerEventBase callEvent) =>
             {
-                Task.Run(() =>
+                Task.Run(async () =>
                 {
                     var playAudioResultEvent = (PlayAudioResultEvent)callEvent;
                     Logger.LogMessage(Logger.MessageType.INFORMATION, $"Play audio status: {playAudioResultEvent.Status}");
+
+                    if (!Enum.TryParse<PlayMediaState>(playAudioResultEvent.Status.ToString(), true, out var playMediaState))
+                    {
+                        playMediaState = PlayMediaState.NotStarted;
+                    }
+
+                    var callingEvent = new CallingEventDto
+                    {
+                        Id = playAudioResultEvent.OperationContext,
+                        PlayMediaState = playMediaState,
+                    };
+
+                    await _incomingCallEventService.SendEvent(callingEvent);
 
                     if (playAudioResultEvent.Status == CallingOperationStatus.Completed)
                     {
@@ -276,7 +292,10 @@ namespace IncomingCallRouting
                         toneReceivedCompleteTask.TrySetResult(false);
                     }
 
-                    Enum.TryParse<DtmfTone>(toneReceivedEvent.ToneInfo.Tone.ToString(), true, out var dtmfTone);
+                    if (!Enum.TryParse<DtmfTone>(toneReceivedEvent?.ToneInfo?.Tone.ToString(), true, out var dtmfTone))
+                    {
+                        dtmfTone = DtmfTone.Unknown;
+                    }
 
                     await _incomingCallEventService.SendEvent(new CallingEventDto
                     {
@@ -334,6 +353,19 @@ namespace IncomingCallRouting
                 var transferParticipantUpdatedEvent = (ParticipantsUpdatedEvent)callEvent;
                 if (transferParticipantUpdatedEvent.CallConnectionId != null)
                 {
+                    var callingEventDto = new CallingEventDto
+                    {
+                        Id = transferParticipantUpdatedEvent.CallConnectionId,
+                        EventType = EventType.ParticipantUpdated,
+                        Participants = transferParticipantUpdatedEvent.Participants.Select(participant => new Participant
+                        {
+                            ParticipantId = participant.ParticipantId,
+                            IsMuted = participant.IsMuted,
+                        })
+                    };
+
+                    await _incomingCallEventService.SendEvent(callingEventDto);
+
                     Logger.LogMessage(Logger.MessageType.INFORMATION, $"Transfer participant callconnection ID - {transferParticipantUpdatedEvent.CallConnectionId}");
                     EventDispatcher.Instance.Unsubscribe(CallingServerEventType.ParticipantsUpdatedEvent.ToString(), operationContext);
 

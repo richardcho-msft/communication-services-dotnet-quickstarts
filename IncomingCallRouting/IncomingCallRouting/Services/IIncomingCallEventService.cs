@@ -14,16 +14,20 @@ namespace IncomingCallRouting.Services
 
         void Deregister(string clientId);
 
-        Task PlayMedia();
+        Task PlayMedia(CallingEventDto callingEvent);
 
-        Task AddParticipant(string pariticipantId);
+        Task StopMedia(CallingEventDto callingEvent);
 
-        Task AcceptCall();
+        Task AddParticipant(CallingEventDto callingEvent);
 
-        Task RejectCall();
+        Task AcceptCall(CallingEventDto callingEvent);
+
+        Task RejectCall(CallingEventDto callingEvent);
 
         void RegisterCallConnection(CallConnection callConnection);
-        
+
         Task SendEvent(CallingEventDto callingEvent);
+
+        Task EndCall(CallingEventDto callingEvent);
     }
 }

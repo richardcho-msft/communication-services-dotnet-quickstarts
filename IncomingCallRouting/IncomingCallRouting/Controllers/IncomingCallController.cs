@@ -10,6 +10,7 @@ using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
 using IncomingCallRouting.Services;
 using IncomingCallRouting.Models;
+using LiveWire.IncomingCall;
 
 namespace IncomingCallRouting.Controllers
 {
@@ -75,8 +76,9 @@ namespace IncomingCallRouting.Controllers
                         var callConnection = response.Value;
                         
                         _incomingCallEventService.RegisterCallConnection(callConnection);
-                        _incomingCallEventService.SendEvent(new CallingEventDto
+                        await _incomingCallEventService.SendEvent(new CallingEventDto
                         {
+                            EventType = EventType.IncomingCall,
                             Id = callConnection.CallConnectionId,
                         });
                         
