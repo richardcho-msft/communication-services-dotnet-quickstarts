@@ -28,6 +28,8 @@ namespace IncomingCallRouting.Controllers
 
             await foreach (var request in requestStream.ReadAllAsync())
             {
+                Console.WriteLine($"Client {requestStream.Current.ClientId} connected.");
+
                 clientIds.Add(request.ClientId);
                 _incomingCallEventService.Register(request.ClientId, async callingEvent =>
                 {
@@ -40,6 +42,8 @@ namespace IncomingCallRouting.Controllers
             }
 
             clientIds.ForEach(clientId => _incomingCallEventService.Deregister(clientId));
+            clientIds.ForEach(clientId => Console.WriteLine($"Client {clientId} disconnected."));
+
         }
     }
 }

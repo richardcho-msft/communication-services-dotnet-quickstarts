@@ -35,7 +35,12 @@ namespace IncomingCallRouting.Services
             switch (_mode)
             {
                 case DistributionMode.RoundRobin:
-                    if (!_enumerator.MoveNext()) _enumerator = _connectionCounts.GetEnumerator();
+                    if (!_enumerator.MoveNext())
+                    {
+                        _enumerator = _connectionCounts.GetEnumerator();
+                        _enumerator.MoveNext();
+                    }
+
                     return _enumerator.Current.Key;
                 case DistributionMode.LeastIdle:
                     return _connectionCounts.MinBy(connection => connection.Value).Key;

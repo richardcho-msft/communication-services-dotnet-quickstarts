@@ -75,7 +75,7 @@ namespace IncomingCallRouting.Controllers
                         var callConnection = response.Value;
                         
                         _incomingCallEventService.RegisterCallConnection(callConnection);
-                        _incomingCallEventService.Invoke(new CallingEventDto
+                        _incomingCallEventService.SendEvent(new CallingEventDto
                         {
                             Id = callConnection.CallConnectionId,
                         });
