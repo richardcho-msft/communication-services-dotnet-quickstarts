@@ -3,44 +3,105 @@ syntax = "proto3";
 option csharp_namespace = "LiveWire.IncomingCall";
 
 message CallingEventRequest {
-    string client_id = 1;
+    ActionType action = 1;
+    optional string call_id = 2;
+    optional PlayMediaOptions play_media_options = 3;
+    optional string client_id = 4;
+    optional AddParticipantOptions add_participant_options = 5;
+    optional SpeachOptions speach_options = 6;
+    optional RecordingOptions recording_options = 7;
 }
 
 message CallingEventResponse {
     EventType event_type = 1;
     string call_id = 2;
     optional CallConnectionState call_connection_state = 3;
-    optional DtmfTone DtmfTone = 4;
+    optional DtmfTone dtmf_tone = 4;
+    optional PlayMediaState play_media_state = 5;
+    optional IncomingCallContext incoming_call_context = 6;
 }
 
 enum EventType {
     INCOMING_CALL = 0;
     CALL_CONNECTION = 1;
     DTMF_TONE = 2;
+    MEDIA_PLAYED = 3;
+    REGISTER_CLIENT = 4;
+    PARTICIPANT_UPDATED = 5;
+    SPEACH = 6;
+}
+
+enum ActionType {
+    ACCEPT_CALL = 0;
+    REJECT_CALL = 1;
+    ADD_PARTICIPANT = 2;
     PLAY_MEDIA = 3;
+    STOP_MEDIA = 4;
+    SPEAK = 5;
+    START_RECORDING = 6;
+    STOP_RECORDING = 7;
+    END_CALL = 8;
+    REGISTER = 9;
 }
 
 enum CallConnectionState {
-    CONNECTING = 0;
-    CONNECTED = 1;
-    DISCONNECTED = 2;
-    DISCONNECTING = 3;
-    TRANSFERRING = 4;
-    TRANSFERRED = 5;
-    DEFAULT = 6;
+    NOT_CONNECTED = 0;
+    CONNECTING = 1;
+    CONNECTED = 2;
+    DISCONNECTED = 3;
+    DISCONNECTING = 4;
+    TRANSFERRING = 5;
+    TRANSFERRED = 6;
+}
+
+enum PlayMediaState {
+    NOT_STARTED = 0;
+    RUNNING = 1;
+    COMPLETED = 2;
+    FAILED = 3;
 }
 
 enum DtmfTone {
-    TONE0 = 0;
-    TONE1 = 1;
-    TONE2 = 2;
-    TONE3 = 3;
-    TONE4 = 4;
-    TONE5 = 5;
-    TONE6 = 6;
-    TONE7 = 7;
-    TONE8 = 8;
-    TONE9 = 9;
+    UNKNOWN = 0;
+    TONE0 = 1;
+    TONE1 = 2;
+    TONE2 = 3;
+    TONE3 = 4;
+    TONE4 = 5;
+    TONE5 = 6;
+    TONE6 = 7;
+    TONE7 = 8;
+    TONE8 = 9;
+    TONE9 = 10;
+}
+
+message PlayMediaOptions {
+    string media_url = 1;
+    bool loop = 2;
+    optional string operational_context = 3;
+}
+
+message AddParticipantOptions {
+    string participant_id = 1;
+    optional string operational_context = 2;
+}
+
+message SpeachOptions {
+    string content = 1;
+}
+
+message RecordingOptions {
+    string storage_location = 1;
+}
+
+message Participant {
+    string participant_id = 1;
+    bool is_muted = 2;
+}
+
+message IncomingCallContext {
+    string from = 1;
+    string to = 2;
 }
 
 service IncomingCall {

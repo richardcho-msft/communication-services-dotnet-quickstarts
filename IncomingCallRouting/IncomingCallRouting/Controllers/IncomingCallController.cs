@@ -10,6 +10,7 @@ using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
 using IncomingCallRouting.Services;
 using IncomingCallRouting.Models;
+using LiveWire.IncomingCall;
 
 namespace IncomingCallRouting.Controllers
 {
@@ -66,6 +67,8 @@ namespace IncomingCallRouting.Controllers
                     if (eventData != null)
                     {
                         string incomingCallContext = eventData.Split("\"incomingCallContext\":\"")[1].Split("\"}")[0];
+                        string from = incomingCallContext.Split("\"from\":\":{\"rawId\":")[1].Split("\"")[0];
+                        string to = incomingCallContext.Split("\"to\":\":{\"rawId\":")[1].Split("\"")[0];
 
                         var response = await callingServerClient.AnswerCallAsync(
                             incomingCallContext,
@@ -73,10 +76,17 @@ namespace IncomingCallRouting.Controllers
                             new List<CallingEventSubscriptionType> { CallingEventSubscriptionType.ParticipantsUpdated },
                             new Uri(callConfiguration.AppCallbackUrl));
                         var callConnection = response.Value;
-
-                        _incomingCallEventService.SendEvent(new CallingEventDto
+                        
+                        _incomingCallEventService.RegisterCallConnection(callConnection);
+                        await _incomingCallEventService.SendEvent(new CallingEventDto
                         {
+                            EventType = EventType.IncomingCall,
                             Id = callConnection.CallConnectionId,
+                            IncomingCallContext = new IncomingCallContext
+                            {
+                                From = from,
+                                To = to,
+                            },
                         });
                         
                         incomingCalls.Add(Task.Run(async () => await new IncomingCallHandler(callingServerClient, callConfiguration, _incomingCallEventService).Report(callConnection)));
