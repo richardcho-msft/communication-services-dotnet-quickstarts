@@ -42,6 +42,11 @@ namespace IncomingCallRouting.Controllers
                            await responseStream.WriteAsync(ParseResponse(callingEvent));
                        });
 
+                       await responseStream.WriteAsync(new CallingEventResponse
+                           {
+                               EventType = EventType.RegisterClient,
+                           });
+
                         break;
 
                     case ActionType.PlayMedia:

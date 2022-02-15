@@ -67,8 +67,8 @@ namespace IncomingCallRouting.Controllers
                     if (eventData != null)
                     {
                         string incomingCallContext = eventData.Split("\"incomingCallContext\":\"")[1].Split("\"}")[0];
-                        string from = incomingCallContext.Split("\"from\":\":{\"rawId\":")[1].Split("\"")[0];
-                        string to = incomingCallContext.Split("\"to\":\":{\"rawId\":")[1].Split("\"")[0];
+                        string from = eventData.Split("\"from\":{\"rawId\":\"")[1].Split("\",")[0];
+                        string to = eventData.Split("\"to\":{\"rawId\":\"")[1].Split("\",")[0];
 
                         var response = await callingServerClient.AnswerCallAsync(
                             incomingCallContext,
