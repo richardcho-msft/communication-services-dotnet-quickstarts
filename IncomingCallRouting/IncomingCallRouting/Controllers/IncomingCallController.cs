@@ -11,6 +11,10 @@ using Azure.Messaging.EventGrid.SystemEvents;
 using IncomingCallRouting.Services;
 using IncomingCallRouting.Models;
 using LiveWire.IncomingCall;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text;
 
 namespace IncomingCallRouting.Controllers
 {
@@ -21,6 +25,7 @@ namespace IncomingCallRouting.Controllers
 
         private readonly IIncomingCallEventService _incomingCallEventService;
 
+        private readonly HttpClient _httpClient = new HttpClient();
 
         List<Task> incomingCalls;
         CallConfiguration callConfiguration;
@@ -130,6 +135,5 @@ namespace IncomingCallRouting.Controllers
                 return Json(new { Exception = ex });
             }
         }
-
     }
 }

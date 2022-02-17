@@ -56,6 +56,7 @@ namespace IncomingCallRouting
                 endpoints.MapControllers();
                 endpoints.MapGrpcService<IncomingCallRpcController>();
                 endpoints.MapGrpcService<GreeterService>();
+                endpoints.MapGrpcService<GrpcTestController>();
             });
         }
     }

@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+option csharp_namespace = "LiveWire.IncomingCall.Models";
+
+import "google/protobuf/timestamp.proto";
+
+message TestMessage {
+    string id = 1;
+    google.protobuf.Timestamp time_stamp = 2;
+    int32 count = 3;
+}
+
+service TestService {
+    rpc Test(stream TestMessage) returns (stream TestMessage);
+}

@@ -18,6 +18,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Swashbuckle.AspNetCore" Version="5.6.3" />
+    <PackageReference Include="System.Text.Json" Version="6.0.2" />
   </ItemGroup>
 
   <ItemGroup>
@@ -29,6 +30,7 @@
   <ItemGroup>
     <Protobuf Include="../incoming_call.proto" GrpcServices="Server" />
     <Protobuf Include="../greet.proto" GrpcServices="Server" />
+    <Protobuf Include="../test.proto" GrpcServices="Server" />
   </ItemGroup>
 
 </Project>
